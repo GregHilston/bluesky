@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -49,6 +50,22 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
+	// Add counter for messages
+	var messageCount uint64
+
+	// Start a goroutine to print the rate every second
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		var lastCount uint64
+		for range ticker.C {
+			currentCount := atomic.LoadUint64(&messageCount)
+			rate := currentCount - lastCount
+			fmt.Printf("Messages per second: %d\n", rate)
+			lastCount = currentCount
+		}
+	}()
+	defer ticker.Stop()
+
 	// Start reading messages
 	done := make(chan struct{})
 	go func() {
@@ -60,27 +77,30 @@ func main() {
 				return
 			}
 
+			// Increment the message counter
+			atomic.AddUint64(&messageCount, 1)
+
 			var event Event
 			if err := json.Unmarshal(message, &event); err != nil {
 				log.Printf("Error unmarshaling event: %v", err)
 				continue
 			}
 
-			fmt.Printf("event.Kind: %s\n", event.Kind)
+			// fmt.Printf("event.Kind: %s\n", event.Kind)
 
 			// Only process commit events
 			if event.Kind == "commit" && event.Commit != nil {
 				// Only process create operations
 				if event.Commit.Operation == "create" {
 					// Print the basic event information
-					fmt.Printf("\n--- New Post Event ---\n")
-					fmt.Printf("DID: %s\n", event.Did)
-					fmt.Printf("Time: %s\n", time.UnixMicro(event.TimeUS).Format(time.RFC3339))
-					fmt.Printf("Operation: %s\n", event.Commit.Operation)
-					fmt.Printf("Collection: %s\n", event.Commit.Collection)
-					fmt.Printf("RKey: %s\n", event.Commit.RKey)
-					fmt.Printf("CID: %s\n", event.Commit.CID)
-					fmt.Printf("Rev: %s\n", event.Commit.Rev)
+					// fmt.Printf("\n--- New Post Event ---\n")
+					// fmt.Printf("DID: %s\n", event.Did)
+					// fmt.Printf("Time: %s\n", time.UnixMicro(event.TimeUS).Format(time.RFC3339))
+					// fmt.Printf("Operation: %s\n", event.Commit.Operation)
+					// fmt.Printf("Collection: %s\n", event.Commit.Collection)
+					// fmt.Printf("RKey: %s\n", event.Commit.RKey)
+					// fmt.Printf("CID: %s\n", event.Commit.CID)
+					// fmt.Printf("Rev: %s\n", event.Commit.Rev)
 
 					// If it's a post, try to decode the post content
 					if event.Commit.Collection == "app.bsky.feed.post" {
@@ -89,10 +109,10 @@ func main() {
 							log.Printf("Error unmarshaling post: %v", err)
 							continue
 						}
-						fmt.Printf("Post Text: %s\n", post.Text)
-						fmt.Printf("Post Created At: %s\n", post.CreatedAt)
+						// fmt.Printf("Post Text: %s\n", post.Text)
+						// fmt.Printf("Post Created At: %s\n", post.CreatedAt)
 					}
-					fmt.Println("-------------------")
+					// fmt.Println("-------------------")
 				}
 			}
 		}
