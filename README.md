@@ -2,6 +2,8 @@
 
 A Go-based project for interacting with the Bluesky social network.
 
+This code was originally discussed on [my blog](https://www.greghilston.com/post/drinking-from-a-firehose/).
+
 ## Installation
 
 Ensure you have Go 1.23.3 or later installed on your system.
