@@ -164,22 +164,21 @@ func main() {
 	}()
 
 	// Wait for interrupt signal
-	for {
+	select {
+	case <-done:
+		return
+	case <-interrupt:
+		log.Println("Received interrupt signal, closing connection...")
+		err := c.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err != nil {
+			log.Println("write close:", err)
+		}
 		select {
 		case <-done:
-			return
-		case <-interrupt:
-			log.Println("Received interrupt signal, closing connection...")
-			err := c.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			return
+		case <-time.After(time.Second):
 		}
+		return
 	}
 }
+
